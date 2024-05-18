@@ -50,19 +50,18 @@ const Rect_t text_area = {
     .width = EPD_WIDTH - 20,
     .height = EPD_HEIGHT - 10};
 
-const char *text[] = {
-    "CHAPTER I. Down the Rabbit-Hole Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do:",
-    "once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it,",
-    "“and what is the use of a book,” thought Alice “without pictures or conversations?”"};
+const char *text = {
+
+    "CHAPTER I.\nDown the Rabbit-Hole\n\n\nAlice was beginning to get very tired of sitting by her sister on the\nbank, and of having nothing to do: once or twice she had peeped into\nthe book her sister was reading, but it had no pictures or\nconversations in it, “and what is the use of a book,” thought Alice\n“without pictures or conversations?”\n\nSo she was considering in her own mind (as well as she could, for the\nhot day made her feel very sleepy and stupid), whether the pleasure of\nmaking a daisy-chain would be worth the trouble of getting up and\npicking the daisies, when suddenly a White Rabbit with pink eyes ran\nclose by her."};
 
 const int chars_in_line = 47;
+const int rows_in_page = 10;
 
 /* *** Globals ********************************************** */
 uint8_t *framebuffer;
 Cursor g_cursor = {
     .x = 20,
     .y = 60};
-int state = 0;
 int vref = 1100;
 
 /* *** Functions ******************************************** */
@@ -79,7 +78,7 @@ inline bool is_next_char_line_break(const size_t i)
 
 inline bool is_char_new_line(const char c)
 {
-    return NULL != strchr(" \n", c);
+    return NULL != strchr("\n", c);
 }
 
 inline bool is_char_space(const char c)
@@ -100,32 +99,56 @@ inline bool is_char_word_separator(const char c)
            is_char_space(c);
 }
 
+
+inline bool is_letter(const char c){
+    return  NULL!= strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", c);
+}
+
+inline bool is_part_of_word(const char c){
+
+    return  NULL!= strchr("'-", c) || is_letter;
+
+}
+
 void render_text(char *text)
 {
-    StringBuffer string_buffer = StringBuffer(300);
+    StringBuffer string_buffer = StringBuffer(strlen(text) + 100);
     reset_global_curser();
     int length = strlen(text);
 
-    for (int i = 0; i < length; i++)
+    int new_line_count = 0;
+    int chars_since_new_line = 0;
+    for (int i = 0; i < length && new_line_count < rows_in_page; i++)
     {
-        if (is_next_char_line_break(i))
+        if (is_char_new_line(text[i]))
         {
-            if (is_char_word_separator(text[i + 1]))
-            {
-                string_buffer.insert_char(text[i]);
-                string_buffer.insert_char(text[++i]);
-                string_buffer.insert_char('\n');
-            }
-            else
+            string_buffer.insert_char(text[i]);
+            chars_since_new_line = 0;
+            new_line_count++;
+        }
+        else if (is_next_char_line_break(chars_since_new_line))
+        {
+            if (is_part_of_word(text[i + 1]) && is_part_of_word(text[i]))
             {
                 string_buffer.insert_char('-');
                 string_buffer.insert_char('\n');
                 string_buffer.insert_char(text[i]);
+                chars_since_new_line = 1;
+                new_line_count++;
+            }
+            else
+            {
+                string_buffer.insert_char(text[i]);
+                string_buffer.insert_char(text[++i]);
+                string_buffer.insert_char('\n');
+                chars_since_new_line = 0;
+                new_line_count++;
             }
         }
         else
         {
             string_buffer.insert_char(text[i]);
+            chars_since_new_line++;
         }
     }
     string_buffer.insert_char('\0');
@@ -137,7 +160,7 @@ void displayInfo(void)
 {
     epd_poweron();
     epd_clear_area(text_area);
-    render_text((char *)text[0]);
+    render_text((char *)text);
     epd_poweroff();
 }
 
@@ -159,7 +182,7 @@ void enter_deep_sleep(void)
 /* *** Events *********************************************** */
 void buttonPressed(Button2 &b)
 {
-    state++;
+    ;
     displayInfo();
 }
 
@@ -188,7 +211,7 @@ void setup()
 
     btn1.setPressedHandler(buttonPressed);
 
-    // epd_clear();
+    epd_clear();
     displayInfo();
     // epd_draw_grayscale_image(epd_full_screen(), framebuffer);
     // epd_poweroff();
