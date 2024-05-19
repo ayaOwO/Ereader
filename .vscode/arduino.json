@@ -1,8 +1,8 @@
 {
-    "port": "/dev/ttyACM0",
-    "configuration": "USBMode=hwcdc,MSCOnBoot=default,DFUOnBoot=default,PartitionScheme=default,DebugLevel=none,EraseFlash=none",
-    "board": "esp32:esp32:esp32s3box",
+    "board": "esp32:esp32:esp32s3",
     "programmer": "esptool",
-    "sketch": "lilygo.ino",
-    "output": "./build"
+    "sketch": "Ereader.ino",
+    "output": "./build",
+    "port": "COM5",
+    "configuration": "JTAGAdapter=default,PSRAM=opi,FlashMode=qio,FlashSize=16M,LoopCore=1,EventsCore=1,USBMode=hwcdc,CDCOnBoot=cdc,MSCOnBoot=default,DFUOnBoot=default,UploadMode=default,PartitionScheme=app3M_fat9M_16MB,CPUFreq=240,UploadSpeed=921600,DebugLevel=none,EraseFlash=none"
 }
