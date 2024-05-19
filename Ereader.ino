@@ -51,7 +51,7 @@ char *text = {
 
 const int chars_in_line = 47;
 const int rows_in_page = 10;
-char* book_head = text;
+int page_offset = 0;
 
 /* *** Globals ********************************************** */
 uint8_t *framebuffer;
@@ -76,7 +76,9 @@ inline bool is_letter(const char c) {
          strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", c);
 }
 
-inline bool is_part_of_word(const char c) { return NULL != strchr("'-", c) || is_letter(c); }
+inline bool is_part_of_word(const char c) {
+  return NULL != strchr("'-", c) || is_letter(c);
+}
 
 void render_text(char *text) {
   StringBuffer string_buffer = StringBuffer(strlen(text) + 100);
@@ -85,6 +87,7 @@ void render_text(char *text) {
 
   int line_count = 0;
   int chars_in_current_line = 0;
+  int last_i = 0;
   for (int i = 0; i < length && line_count < rows_in_page; i++) {
 
     // If there's a natural new line, add it
@@ -95,8 +98,10 @@ void render_text(char *text) {
     } else if (is_next_char_line_break(chars_in_current_line)) {
       // The new line will intercept a word
       char buffer[120];
-      sprintf(buffer, "Current char is '%c' %d at index %d, next char should be a new line with %d chars in the current line",
-                     text[i], text[i], i, chars_in_current_line);
+      sprintf(buffer,
+              "Current char is '%c' %d at index %d, next char should be a new "
+              "line with %d chars in the current line",
+              text[i], text[i], i, chars_in_current_line);
       Serial.println(buffer);
       if (is_part_of_word(text[i + 1]) && is_part_of_word(text[i])) {
         string_buffer.insert_char(text[i]);
@@ -117,8 +122,9 @@ void render_text(char *text) {
       string_buffer.insert_char(text[i]);
       chars_in_current_line++;
     }
-    book_head = text + i;
+    last_i = i;
   }
+  page_offset += last_i;
   string_buffer.insert_char('\0');
 
   write_string((GFXfont *)&FiraSans, string_buffer.head, &g_cursor.x,
@@ -128,7 +134,7 @@ void render_text(char *text) {
 void displayInfo(void) {
   epd_poweron();
   epd_clear_area(text_area);
-  render_text(book_head);
+  render_text(text + page_offset);
   epd_poweroff();
 }
 
@@ -136,7 +142,7 @@ void enter_deep_sleep(void) {
   delay(1000);
   epd_clear_area(text_area);
   reset_global_curser();
-  write_string((GFXfont *)&FiraSans, "DeepSleep", &g_cursor.x, &g_cursor.y,
+  write_string((GFXfont *)&FiraSans, "Deep Sleep", &g_cursor.x, &g_cursor.y,
                NULL);
   epd_poweroff_all();
 #if defined(CONFIG_IDF_TARGET_ESP32)
@@ -150,10 +156,15 @@ void enter_deep_sleep(void) {
 
 /* *** Events *********************************************** */
 void buttonPressed(Button2 &b) {
-  is_sleep= (is_sleep+ 1 % 2);
-  if (is_sleep== 1) {
+  char buffer[120];
+  sprintf(buffer, "Current page offset is %d and the length of the text is %d",
+          page_offset, strlen(text));
+  Serial.println(buffer);
+  if (page_offset + 1>= strlen(text)) {
+    page_offset = 0;
     enter_deep_sleep();
   } else {
+
     displayInfo();
   }
 }
@@ -185,7 +196,6 @@ void setup() {
   displayInfo();
   // epd_draw_grayscale_image(epd_full_screen(), framebuffer);
   // epd_poweroff();
-  state = 0;
 }
 
 void loop() {
