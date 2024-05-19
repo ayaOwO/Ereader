@@ -37,8 +37,7 @@ public:
 /* *** Contsants ******************************************** */
 const Rect_t text_area = {
     .x = 10, .y = 20, .width = EPD_WIDTH - 20, .height = EPD_HEIGHT - 10};
-
-const char *text = {
+char *text = {
 
     "CHAPTER I.\nDown the Rabbit-Hole\n\n\nAlice was beginning to get very "
     "tired of sitting by her sister on the\nbank, and of having nothing to do: "
@@ -52,12 +51,13 @@ const char *text = {
 
 const int chars_in_line = 47;
 const int rows_in_page = 10;
+char* book_head = text;
 
 /* *** Globals ********************************************** */
 uint8_t *framebuffer;
 Cursor g_cursor = {.x = 20, .y = 60};
 int vref = 1100;
-int state = 0;
+int is_sleep = 0;
 
 /* *** Functions ******************************************** */
 void reset_global_curser(void) {
@@ -71,24 +71,12 @@ inline bool is_next_char_line_break(const size_t i) {
 
 inline bool is_char_new_line(const char c) { return NULL != strchr("\n", c); }
 
-inline bool is_char_space(const char c) { return NULL != strchr(" \t", c); }
-
-inline bool is_char_null_terminator(const char c) { return c == '\0'; }
-
-inline bool is_char_word_separator(const char c) {
-  return NULL != strchr(" .,;:'", c) || is_char_new_line(c) ||
-         is_char_null_terminator(c) || is_char_space(c);
-}
-
 inline bool is_letter(const char c) {
   return NULL !=
          strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", c);
 }
 
-inline bool is_part_of_word(const char c) {
-
-  return NULL != strchr("'-", c) || is_letter;
-}
+inline bool is_part_of_word(const char c) { return NULL != strchr("'-", c) || is_letter(c); }
 
 void render_text(char *text) {
   StringBuffer string_buffer = StringBuffer(strlen(text) + 100);
@@ -106,6 +94,10 @@ void render_text(char *text) {
       line_count++;
     } else if (is_next_char_line_break(chars_in_current_line)) {
       // The new line will intercept a word
+      char buffer[120];
+      sprintf(buffer, "Current char is '%c' %d at index %d, next char should be a new line with %d chars in the current line",
+                     text[i], text[i], i, chars_in_current_line);
+      Serial.println(buffer);
       if (is_part_of_word(text[i + 1]) && is_part_of_word(text[i])) {
         string_buffer.insert_char(text[i]);
         string_buffer.insert_char('-');
@@ -115,9 +107,9 @@ void render_text(char *text) {
       } else {
         // we only have 2 more chars until a new row, might as well add them now
         string_buffer.insert_char(text[i]);
-        string_buffer.insert_char(text[++i]);
         string_buffer.insert_char('\n');
-        chars_in_current_line = 0;
+        string_buffer.insert_char(text[++i]);
+        chars_in_current_line = 1;
         line_count++;
       }
       // There's still space for another word
@@ -125,6 +117,7 @@ void render_text(char *text) {
       string_buffer.insert_char(text[i]);
       chars_in_current_line++;
     }
+    book_head = text + i;
   }
   string_buffer.insert_char('\0');
 
@@ -135,7 +128,7 @@ void render_text(char *text) {
 void displayInfo(void) {
   epd_poweron();
   epd_clear_area(text_area);
-  render_text((char *)text);
+  render_text(book_head);
   epd_poweroff();
 }
 
@@ -157,8 +150,8 @@ void enter_deep_sleep(void) {
 
 /* *** Events *********************************************** */
 void buttonPressed(Button2 &b) {
-  state = (state + 1 % 2);
-  if (state == 1) {
+  is_sleep= (is_sleep+ 1 % 2);
+  if (is_sleep== 1) {
     enter_deep_sleep();
   } else {
     displayInfo();
