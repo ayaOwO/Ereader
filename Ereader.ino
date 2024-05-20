@@ -133,14 +133,14 @@ void render_text(char *text) {
 
 void displayInfo(void) {
   epd_poweron();
-  epd_clear_area(text_area);
+  epd_clear();
   render_text(text + page_offset);
   epd_poweroff();
 }
 
 void enter_deep_sleep(void) {
   delay(1000);
-  epd_clear_area(text_area);
+  epd_clear();
   reset_global_curser();
   write_string((GFXfont *)&FiraSans, "Deep Sleep", &g_cursor.x, &g_cursor.y,
                NULL);
@@ -195,7 +195,7 @@ void setup() {
   epd_clear();
   displayInfo();
   // epd_draw_grayscale_image(epd_full_screen(), framebuffer);
-  // epd_poweroff();
+  // epd_poweroff(); 
 }
 
 void loop() {
